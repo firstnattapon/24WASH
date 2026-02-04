@@ -235,7 +235,7 @@ def handle_image_message(event):
             )
         else:
             line_bot_api.reply_message(
-                ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="❌ สลิปไม่ถูกต้อง หรือซ้ำ > โปรดลองใหม่")])
+                ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="❌ สลิปไม่ถูกต้องหรือซ้ำ > โปรดลองใหม่")])
             )
 
 # ==========================================
