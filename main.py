@@ -29,23 +29,23 @@ FIREBASE_DB_URL = os.environ.get('FIREBASE_DB_URL', 'YOUR_DB_URL')
 # [ADJUSTMENT] ใช้ String เป็น Key เพื่อความแม่นยำ 100% ในการเทียบ
 MACHINE_MAPPING_SLIP = {
     "20.0":  "20",
-    "30.0":  "30",
+    # "30.0":  "30",
     "30.01": "301",
     "40.0":  "40",
     "50.0":  "50",
     # กรณี SlipOK ส่งมาเป็น integer (เช่น 20)
     "20":    "20",
-    "30":    "30",
+    # "30":    "30",
     "40":    "40",
     "50":    "50",
 }
 
 MACHINE_PATH_MAP_COUPON = {
     "1": "20/payment_commands",
-    "2": "payment_commands",
-    "3": "301/payment_commands",
-    "4": "30/payment_commands",
-    "5": "50/payment_commands",
+    "2": "302/payment_commands",    
+    "3": "301/payment_commands",    
+    "4": "payment_commands",
+    # "5": "50/payment_commands",
 }
 
 DEFAULT_PATH = "payment_commands"
