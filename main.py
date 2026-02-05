@@ -231,11 +231,11 @@ def handle_image_message(event):
             push_command_to_firebase(command_data, target_path)
             
             line_bot_api.reply_message(
-                ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="✅ ได้รับยอดเงินเรียบร้อย > เริ่มทำงาน")])
+                ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="✅ ได้รับยอดเงินเรียบร้อย\n******เริ่มทำงาน******")])
             )
         else:
             line_bot_api.reply_message(
-                ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="❌ สลิปไม่ถูกต้องหรือซ้ำ > ลองใหม่")])
+                ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="❌สลิปไม่ถูกต้องหรือซ้ำ\n*****โปรดลองใหม่*****")])
             )
 
 # ==========================================
