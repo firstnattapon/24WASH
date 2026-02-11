@@ -308,10 +308,10 @@ def handle_image_message(event):
             push_command_to_firebase(command_data, target_path)
 
             safe_reply(line_bot_api, event.reply_token,
-                       "✅ ได้รับยอดเงินเรียบร้อย\n*******เริ่มทำงาน******")
+                       "✅ ได้รับยอดเงินเรียบร้อย\n*******เริ่มทำงาน*******")
         else:
             safe_reply(line_bot_api, event.reply_token,
-                       "❌สลิปไม่ถูกต้องหรือซ้ำ\n******โปรดลองใหม่*****")
+                       "❌สลิปไม่ถูกต้องหรือซ้ำ\n*******โปรดลองใหม่*******")
 
 
 # ==========================================
