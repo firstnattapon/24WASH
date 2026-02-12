@@ -168,6 +168,31 @@ def check_slip_with_slipok(image_binary):
         logger.error(f"SlipOK error: {e}")
         return False, None
 
+def optimize_image_for_gemini(image_binary):
+    """ย่อรูปและลดคุณภาพเพื่อความเร็วในการส่งให้ AI"""
+    try:
+        image = Image.open(io.BytesIO(image_binary))
+        
+        # 1. Resize: ถ้าด้านยาวเกิน 1024px ให้ย่อลงมา
+        max_size = 1024
+        if max(image.size) > max_size:
+            ratio = max_size / max(image.size)
+            new_size = (int(image.width * ratio), int(image.height * ratio))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            
+        # 2. Convert to RGB (เผื่อเป็น PNG)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+            
+        # 3. Save to Bytes (JPEG Quality 85)
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='JPEG', quality=85)
+        return img_byte_arr.getvalue()
+        
+    except Exception as e:
+        logger.error(f"Image Optimization Error: {e}")
+        return image_binary # ถ้า error ให้คืนค่าเดิมกลับไป
+
 def check_slip_with_gemini(image_binary):
     """ใช้ Gemini Flash อ่านสลิปเมื่อธนาคารล่ม"""
     if not model:
@@ -175,8 +200,11 @@ def check_slip_with_gemini(image_binary):
         return None, None
 
     try:
-        # เปิดรูปด้วย PIL
-        image = Image.open(io.BytesIO(image_binary))
+        # ✅ Optimize รูปก่อนส่ง
+        optimized_image_binary = optimize_image_for_gemini(image_binary)
+        
+        # เปิดรูปด้วย PIL จาก optimized binary
+        image = Image.open(io.BytesIO(optimized_image_binary))
 
         prompt = """
         You are a system to extract data from Thai bank slips.
@@ -276,7 +304,7 @@ def handle_image_message(event):
             trans_ref = slip_data.get('transRef')
         else:
             # ⚠️ เคสดีเลย์ (1009/1010): ให้ AI ช่วยอ่าน
-            logger.info("Bank Delay -> Using Gemini AI Fallback")
+            # logger.info("Bank Delay -> Using Gemini AI Fallback")
             ai_amount, ai_ref = check_slip_with_gemini(message_content)
             
             if ai_amount:
