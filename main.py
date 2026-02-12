@@ -50,11 +50,13 @@ except Exception as e:
 # --- Machine Mapping ---
 MACHINE_MAPPING_SLIP = {
     "20.0":  "20",
+    "20":    "20",
+    "30.0":  "30",
+    "30":    "20",
     "30.01": "301",
     "40.0":  "40",
-    "50.0":  "50",
-    "20":    "20",
     "40":    "40",
+    "50.0":  "50",
     "50":    "50",
 }
 
@@ -62,7 +64,7 @@ MACHINE_PATH_MAP_COUPON = {
     "1": "20/payment_commands",
     "2": "302/payment_commands",
     "3": "301/payment_commands",
-    "4": "payment_commands",
+    "4": "30/payment_commands",
 }
 
 DEFAULT_PATH = "payment_commands"
