@@ -250,7 +250,7 @@ def handle_text_message(event):
         line_bot_api = MessagingApi(api_client)
 
         if text.upper() == "KEY":
-            safe_reply(line_bot_api, event.reply_token, "🔑 พิมพ์รหัสตามด้วยหมายเลขเครื่อง\nเช่น 12345-1")
+            safe_reply(line_bot_api, event.reply_token, "🔑 พิมพ์รหัสตามด้วยหมายเลขเครื่อง\nเช่น 12345-1 (นับจากซ้ายไปขวา)")
             return
 
         match_machine = re.match(r'^(\d{5})[- ]?0?([1-9])$', text)
