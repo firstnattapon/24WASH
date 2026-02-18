@@ -31,7 +31,7 @@ LINE_CHANNEL_SECRET       = os.environ.get('LINE_CHANNEL_SECRET', '')
 SLIPOK_BRANCH_ID          = os.environ.get('SLIPOK_BRANCH_ID', '')
 SLIPOK_API_KEY            = os.environ.get('SLIPOK_API_KEY', '')
 FIREBASE_DB_URL           = os.environ.get('FIREBASE_DB_URL', '')
-# [P1 Fix] default='' (falsy) → guard ทำงานถูกต้อง
+# [P1 Fix] default='' (falsy) → guard ทำงานถูกต้อง 
 # ถ้าไม่ set env var → gemini_client=None → fallback gracefully
 GENAI_API_KEY             = os.environ.get('GENAI_API_KEY', '')
 
