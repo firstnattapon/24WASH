@@ -42,7 +42,7 @@ MODEL_CONFIG = {
     "response_mime_type": "application/json",
 }
 try:
-    model = genai.GenerativeModel("gemini-1.5-flash", generation_config=MODEL_CONFIG)
+    model = genai.GenerativeModel("gemini-1.5-flash-002", generation_config=MODEL_CONFIG)
 except Exception as e:
     logging.error(f"Failed to initialize Gemini model: {e}")
     model = None
