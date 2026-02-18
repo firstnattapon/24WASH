@@ -87,7 +87,7 @@ MACHINE_PATH_MAP_COUPON = {
 }
 
 DEFAULT_PATH        = "payment_commands"
-SLIPOK_BYPASS_CODES = {1009, 1010}  # ธนาคารล่ม/ช้า
+SLIPOK_BYPASS_CODES = {"1009", "1010"}  # ธนาคารล่ม/ช้า
 
 # ==========================================
 # 4. HELPER FUNCTIONS
@@ -170,7 +170,7 @@ def check_slip_with_slipok(image_binary):
             return True, res_json.get('data')
 
         error_code = res_json.get('code')
-        if error_code in SLIPOK_BYPASS_CODES:
+        if str(error_code) in SLIPOK_BYPASS_CODES:
             logger.warning(f"SlipOK Delayed: {error_code} - Switching to AI")
             return True, None
 
