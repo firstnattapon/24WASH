@@ -64,7 +64,7 @@ MACHINE_PATH_MAP_COUPON = {
     "1": "20/payment_commands",
     "2": "302/payment_commands",
     "3": "301/payment_commands",
-    "4": "payment_commands",
+    "4": "30/payment_commands",
 }
 
 DEFAULT_PATH = "payment_commands"
