@@ -42,7 +42,7 @@ MODEL_CONFIG = {
     "response_mime_type": "application/json",
 }
 try:
-    model = genai.GenerativeModel("gemini-1.5-flash-002", generation_config=MODEL_CONFIG)
+    model = genai.GenerativeModel("gemini-1.5-flash", generation_config=MODEL_CONFIG)
 except Exception as e:
     logging.error(f"Failed to initialize Gemini model: {e}")
     model = None
@@ -50,14 +50,14 @@ except Exception as e:
 # --- Machine Mapping ---
 MACHINE_MAPPING_SLIP = {
     "20.0":  "20",
+    "20":    "20",
+    "30.0":  "30",
+    "30":    "30",
     "30.01": "301",
     "40.0":  "40",
-    "50.0":  "50",
-    "20":    "20",
-    "30":    "30",
     "40":    "40",
+    "50.0":  "50",
     "50":    "50",
-    "30.0":  "30",
 }
 
 MACHINE_PATH_MAP_COUPON = {
@@ -94,22 +94,14 @@ def get_target_path_from_amount(amount):
 
     try:
         amt_str = str(amount)
-        machine_id = None
-
         if amt_str in MACHINE_MAPPING_SLIP:
-            machine_id = MACHINE_MAPPING_SLIP[amt_str]
-        else:
-            amt_float = float(amount)
-            if amt_float.is_integer():
-                amt_int_str = str(int(amt_float))
-                if amt_int_str in MACHINE_MAPPING_SLIP:
-                    machine_id = MACHINE_MAPPING_SLIP[amt_int_str]
-        
-        if machine_id:
-            # ถ้าเป็นเครื่อง 30 ให้ใช้ DEFAULT_PATH ตามที่ User ต้องการ
-            if machine_id == "30":
-                return DEFAULT_PATH
-            return f"{machine_id}/payment_commands"
+            return f"{MACHINE_MAPPING_SLIP[amt_str]}/payment_commands"
+
+        amt_float = float(amount)
+        if amt_float.is_integer():
+            amt_int_str = str(int(amt_float))
+            if amt_int_str in MACHINE_MAPPING_SLIP:
+                return f"{MACHINE_MAPPING_SLIP[amt_int_str]}/payment_commands"
 
     except Exception as e:
         logger.error(f"Error parsing amount: {e}")
@@ -203,47 +195,6 @@ def optimize_image_for_gemini(image_binary):
         logger.error(f"Image Optimization Error: {e}")
         return image_binary # ถ้า error ให้คืนค่าเดิมกลับไป
 
-def extract_json_from_text(text):
-    """
-    พยายามแกะ JSON ออกจาก Text ที่อาจจะมี Markdown หรือคำพูดอื่นๆ ปนมา
-    """
-    try:
-        # 1. หา JSON Block ที่เป็น { ... }
-        # ใช้ stack เพื่อหาคู่วงเล็บที่ถูกต้อง (รองรับ Nested JSON)
-        text = text.strip()
-        stack = []
-        start_index = -1
-        
-        for i, char in enumerate(text):
-            if char == '{':
-                if not stack:
-                    start_index = i
-                stack.append(char)
-            elif char == '}':
-                if stack:
-                    stack.pop()
-                    if not stack:
-                        # เจอ JSON ก้อนแรกที่สมบูรณ์
-                        json_str = text[start_index : i+1]
-                        try:
-                            return json.loads(json_str) 
-                        except:
-                            pass # ถ้า parse ไม่ได้ ให้หาต่อ
-        
-        # 2. ถ้าหา JSON ปกติไม่เจอ ให้ลองลบ Markdown Code Block
-        # เช่น ```json ... ```
-        cleaned = re.sub(r"```[a-z]*", "", text).replace("```", "").strip()
-        try:
-             return json.loads(cleaned)
-        except:
-             pass
-
-        return None
-    
-    except Exception as e:
-        logger.error(f"JSON Extraction Error: {e}")
-        return None
-
 def check_slip_with_gemini(image_binary):
     """ใช้ Gemini Flash อ่านสลิปเมื่อธนาคารล่ม"""
     if not model:
@@ -258,57 +209,20 @@ def check_slip_with_gemini(image_binary):
         image = Image.open(io.BytesIO(optimized_image_binary))
 
         prompt = """
-        You are an expert at extracting data from Thai bank transfer slips.
-        Your task is to identify the TRANSFER AMOUNT and TRANSACTION REFERENCE only.
+        You are a system to extract data from Thai bank slips.
+        Analyze this image.
+        1. "amount": The transfer amount (number only, float). Ignore balance available.
+        2. "trans_ref": The transaction reference number.
         
-        CRITICAL INSTRUCTIONS:
-        1. Find "amount": The main transfer amount (number only, float).
-           - IGNORE "Fee" (0.00) or "ค่าธรรมเนียม".
-           - IGNORE "Balance" or "ยอดเงินคงเหลือ".
-           - Should be the largest number related to the transfer.
-        2. Find "trans_ref": The transaction reference number (string).
-           - Usually long string of digits/chars.
-        
-        Output Format:
-        Return ONLY a raw JSON object. Do not use Markdown codes.
-        Example: {"amount": 50.0, "trans_ref": "20240101..."}
-        
-        If you cannot output valid JSON, just output the Key-Value pair like:
-        amount: 50.0
-        trans_ref: 2024...
+        Return strictly JSON: {"amount": float, "trans_ref": string}
         """
 
         response = model.generate_content([prompt, image])
-        text_response = response.text
+        result = json.loads(response.text)
         
-        result = extract_json_from_text(text_response)
+        logger.info(f"Gemini Analysis: {result}")
         
-        amount = None
-        trans_ref = None
-
-        if result:
-            logger.info(f"Gemini Analysis Parsed (JSON): {result}")
-            amount = result.get("amount")
-            trans_ref = result.get("trans_ref")
-        
-        # --- Fallback: ถ้า JSON พัง หรือหาค่าไม่ได้ ใช้ Regex กวาดหาเอง ---
-        if amount is None:
-            # หา "amount": 123.45 หรือ 'amount': 123
-            # รองรับทั้ง : และ = (เผื่อ AI มั่ว)
-            match_amt = re.search(r'[\"\']?amount[\"\']?\s*[:=]\s*([\d\.]+)', text_response, re.IGNORECASE)
-            if match_amt:
-                 try:
-                    amount = float(match_amt.group(1))
-                    logger.info(f"Gemini Analysis Parsed (Regex): amount={amount}")
-                 except: pass
-
-        if trans_ref is None:
-             match_ref = re.search(r'[\"\']?trans_ref[\"\']?\s*[:=]\s*[\"\']?([^\"\'\}\s]+)', text_response, re.IGNORECASE)
-             if match_ref:
-                trans_ref = match_ref.group(1)
-                logger.info(f"Gemini Analysis Parsed (Regex): trans_ref={trans_ref}")
-
-        return amount, trans_ref
+        return result.get("amount"), result.get("trans_ref")
         
     except Exception as e:
         logger.error(f"Gemini AI Error: {e}")
@@ -336,7 +250,7 @@ def handle_text_message(event):
         line_bot_api = MessagingApi(api_client)
 
         if text.upper() == "KEY":
-            safe_reply(line_bot_api, event.reply_token, "🔑 พิมพ์รหัสตามด้วยหมายเลขเครื่อง\nเช่น 12345-1")
+            safe_reply(line_bot_api, event.reply_token, "🔑 พิมพ์รหัสตามด้วยหมายเลขเครื่อง\nเช่น 12345-1 (นับจากซ้ายไปขวา)")
             return
 
         match_machine = re.match(r'^(\d{5})[- ]?0?([1-9])$', text)
@@ -392,7 +306,7 @@ def handle_image_message(event):
             trans_ref = slip_data.get('transRef')
         else:
             # ⚠️ เคสดีเลย์ (1009/1010): ให้ AI ช่วยอ่าน
-            logger.info("Bank Delay -> Using Gemini AI Fallback")
+            # logger.info("Bank Delay -> Using Gemini AI Fallback")
             ai_amount, ai_ref = check_slip_with_gemini(message_content)
             
             if ai_amount:
