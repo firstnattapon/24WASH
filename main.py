@@ -195,6 +195,16 @@ def optimize_image_for_gemini(image_binary):
         logger.error(f"Image Optimization Error: {e}")
         return image_binary # ถ้า error ให้คืนค่าเดิมกลับไป
 
+def clean_json_response(text):
+    """ทำความสะอาด JSON string ที่มักจะมี Markdown ติดมาด้วย"""
+    try:
+        # ลบ ```json ... ``` หรือ ``` ... ```
+        cleaned = re.sub(r"```[a-z]*", "", text).replace("```", "").strip()
+        return cleaned
+    except Exception as e:
+        logger.error(f"JSON Cleaning Error: {e}")
+        return text
+
 def check_slip_with_gemini(image_binary):
     """ใช้ Gemini Flash อ่านสลิปเมื่อธนาคารล่ม"""
     if not model:
@@ -209,23 +219,44 @@ def check_slip_with_gemini(image_binary):
         image = Image.open(io.BytesIO(optimized_image_binary))
 
         prompt = """
-        You are a system to extract data from Thai bank slips.
-        Analyze this image.
-        1. "amount": The transfer amount (number only, float). Ignore balance available.
-        2. "trans_ref": The transaction reference number.
+        You are an expert at extracting data from Thai bank transfer slips.
+        Your task is to identify the TRANSFER AMOUNT and TRANSACTION REFERENCE only.
         
-        Return strictly JSON: {"amount": float, "trans_ref": string}
+        CRITICAL INSTRUCTIONS:
+        1. Find "amount": The main transfer amount (number only, float).
+           - IGNORE "Fee" (0.00) or "ค่าธรรมเนียม".
+           - IGNORE "Balance" or "ยอดเงินคงเหลือ".
+           - Should be the largest number related to the transfer.
+        2. Find "trans_ref": The transaction reference number (string).
+           - Usually long string of digits/chars.
+        
+        Output Format:
+        Return ONLY a raw JSON object. Do not use Markdown codes.
+        Example: {"amount": 50.0, "trans_ref": "20240101..."}
         """
 
         response = model.generate_content([prompt, image])
-        result = json.loads(response.text)
+        text_response = response.text
         
-        logger.info(f"Gemini Analysis: {result}")
+        # 1. Clean Markdown
+        cleaned_text = clean_json_response(text_response)
+        
+        # 2. Parse JSON
+        result = json.loads(cleaned_text)
+        
+        logger.info(f"Gemini Analysis Raw: {text_response}")
+        logger.info(f"Gemini Analysis Parsed: {result}")
         
         return result.get("amount"), result.get("trans_ref")
         
     except Exception as e:
-        logger.error(f"Gemini AI Error: {e}")
+        logger.error(f"Gemini AI Analysis Error: {e}")
+        # Log raw response for debugging
+        try:
+            if 'response' in locals() and hasattr(response, 'text'):
+                logger.error(f"Raw Response was: {response.text}")
+        except: pass
+        
         return None, None
 
 def safe_reply(line_bot_api, reply_token, text):
