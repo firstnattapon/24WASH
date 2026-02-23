@@ -2,5 +2,5 @@ flask
 line-bot-sdk>=3.0.0
 firebase-admin
 requests
-google-genai
-Pillow
+google-genai>=0.2.0
+Pillow>=10.0.0
