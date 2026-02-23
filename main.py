@@ -31,8 +31,6 @@ LINE_CHANNEL_SECRET       = os.environ.get('LINE_CHANNEL_SECRET', '')
 SLIPOK_BRANCH_ID          = os.environ.get('SLIPOK_BRANCH_ID', '')
 SLIPOK_API_KEY            = os.environ.get('SLIPOK_API_KEY', '')
 FIREBASE_DB_URL           = os.environ.get('FIREBASE_DB_URL', '')
-# [P1 Fix] default='' (falsy) → guard ทำงานถูกต้อง 
-# ถ้าไม่ set env var → gemini_client=None → fallback gracefully
 GENAI_API_KEY             = os.environ.get('GENAI_API_KEY', '')
 
 # ==========================================
@@ -52,7 +50,6 @@ GEMINI_CONFIG = GenerateContentConfig(
     response_mime_type="application/json",
 )
 
-# [P3] Startup validation log
 logger.info(f"Gemini client: {'✅ ready' if gemini_client else '⚠️ NOT initialized (GENAI_API_KEY not set)'}")
 
 # Firebase
@@ -245,7 +242,6 @@ def check_slip_with_gemini(image_binary):
         try:
             result = json.loads(clean_json_text(response.text))
             logger.info(f"Gemini Analysis: {result}")
-
             return result.get("amount"), result.get("trans_ref")
         except json.JSONDecodeError as e:
             logger.error(f"JSON Decode Error. Raw AI Response: {response.text}")
@@ -318,21 +314,8 @@ def handle_image_message(event):
         line_bot_api  = MessagingApi(api_client)
         line_bot_blob = MessagingApiBlob(api_client)
 
-        # 1. ดึงรูปภาพ
-        message_content_obj = line_bot_blob.get_message_content(message_id)
-        
-        # [Fix Bug 2] แปลง Object ให้เป็น Bytes
-        if hasattr(message_content_obj, 'content'):
-            message_content = message_content_obj.content
-        elif hasattr(message_content_obj, 'read'):
-            message_content = message_content_obj.read()
-        else:
-            try:
-                message_content = b"".join(message_content_obj)
-            except Exception as e:
-                logger.error(f"Byte extraction failed: {e}")
-                safe_reply(line_bot_api, event.reply_token, "❌ ไม่สามารถอ่านรูปภาพได้ กรุณาส่งใหม่อีกครั้ง")
-                return
+        # 1. ดึงรูปภาพ — ใช้ค่าจาก SDK ตรงๆ ไม่แปลงเพิ่ม
+        message_content = line_bot_blob.get_message_content(message_id)
 
         # 2. เช็ค SlipOK (ด่านแรก)
         is_valid, slip_data = check_slip_with_slipok(message_content)
@@ -381,7 +364,6 @@ def handle_image_message(event):
                 safe_reply(line_bot_api, event.reply_token,
                            f"{msg_prefix} ได้รับยอด {amount} บาท\n*******เริ่มทำงาน*******")
             else:
-                # [P2 Fix] Firebase push fail → แจ้ง user แทน silent fail
                 safe_reply(line_bot_api, event.reply_token, "❌ ระบบขัดข้อง กรุณาติดต่อแอดมิน")
         else:
             safe_reply(line_bot_api, event.reply_token,
