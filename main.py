@@ -47,10 +47,11 @@ gemini_client = genai.Client(
     http_options=HttpOptions(timeout=30),
 ) if GENAI_API_KEY else None
 
-GEMINI_MODEL  = "gemini-2.0-flash"
+GEMINI_MODEL  = "gemini-2.5-flash-lite"
 GEMINI_CONFIG = GenerateContentConfig(
     temperature=0.0,
     response_mime_type="application/json",
+    thinking_config=types.ThinkingConfig(thinking_budget=0)
 )
 
 # [P3] Startup validation log
@@ -217,7 +218,7 @@ def clean_json_text(text):
 
 
 def check_slip_with_gemini(image_binary):
-    """ใช้ Gemini 2.0 Flash อ่านสลิปเมื่อธนาคารล่ม (AI fallback)"""
+    """ใช้ Gemini 2.5 Flash Lite อ่านสลิปเมื่อธนาคารล่ม (AI fallback)"""
     if not gemini_client:
         logger.error("Gemini client not initialized")
         return None, None
@@ -243,10 +244,14 @@ def check_slip_with_gemini(image_binary):
             config=GEMINI_CONFIG,
         )
 
-        result = json.loads(clean_json_text(response.text))
-        logger.info(f"Gemini Analysis: {result}")
+        try:
+            result = json.loads(clean_json_text(response.text))
+            logger.info(f"Gemini Analysis: {result}")
 
-        return result.get("amount"), result.get("trans_ref")
+            return result.get("amount"), result.get("trans_ref")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON Decode Error. Raw AI Response: {response.text}")
+            return None, None
 
     except Exception as e:
         logger.error(f"Gemini AI Error: {e}")
@@ -316,7 +321,20 @@ def handle_image_message(event):
         line_bot_blob = MessagingApiBlob(api_client)
 
         # 1. ดึงรูปภาพ
-        message_content = line_bot_blob.get_message_content(message_id)
+        message_content_obj = line_bot_blob.get_message_content(message_id)
+        
+        # [Fix Bug 2] แปลง Object ให้เป็น Bytes
+        if hasattr(message_content_obj, 'content'):
+            message_content = message_content_obj.content
+        elif hasattr(message_content_obj, 'read'):
+            message_content = message_content_obj.read()
+        else:
+            try:
+                message_content = b"".join(message_content_obj)
+            except Exception as e:
+                logger.error(f"Byte extraction failed: {e}")
+                safe_reply(line_bot_api, event.reply_token, "❌ ไม่สามารถอ่านรูปภาพได้ กรุณาส่งใหม่อีกครั้ง")
+                return
 
         # 2. เช็ค SlipOK (ด่านแรก)
         is_valid, slip_data = check_slip_with_slipok(message_content)
