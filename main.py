@@ -41,10 +41,10 @@ GENAI_API_KEY             = os.environ.get('GENAI_API_KEY', '')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Gemini Client — timeout=8000ms กัน LINE Webhook retry เมื่อ Gemini ช้า
+# Gemini Client — timeout=30 กัน LINE Webhook retry เมื่อ Gemini ช้า
 gemini_client = genai.Client(
     api_key=GENAI_API_KEY,
-    http_options=HttpOptions(timeout=8000),
+    http_options=HttpOptions(timeout=30),
 ) if GENAI_API_KEY else None
 
 GEMINI_MODEL  = "gemini-2.0-flash"
