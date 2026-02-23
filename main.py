@@ -8,7 +8,7 @@ import io
 import firebase_admin
 from google import genai
 from google.genai import types
-from google.genai.types import GenerateContentConfig, HttpOptions
+from google.genai.types import GenerateContentConfig
 from PIL import Image
 from firebase_admin import credentials, db
 from flask import abort
@@ -44,14 +44,12 @@ logger = logging.getLogger(__name__)
 # Gemini Client — timeout=30 กัน LINE Webhook retry เมื่อ Gemini ช้า
 gemini_client = genai.Client(
     api_key=GENAI_API_KEY,
-    http_options=HttpOptions(timeout=30),
 ) if GENAI_API_KEY else None
 
 GEMINI_MODEL  = "gemini-2.5-flash-lite"
 GEMINI_CONFIG = GenerateContentConfig(
     temperature=0.0,
     response_mime_type="application/json",
-    thinking_config=types.ThinkingConfig(thinking_budget=0)
 )
 
 # [P3] Startup validation log
